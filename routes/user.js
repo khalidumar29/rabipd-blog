@@ -1,5 +1,6 @@
 import { Router } from "express";
 import User from "../models/user.js";
+import { createTokenForUser } from "../services/authenticate.js";
 
 const router = Router();
 
@@ -27,10 +28,15 @@ router.post("/signup", async (req, res) => {
 
 router.post("/signin", (req, res) => {
   const { email, password } = req.body;
-  const user = User.matchPassword(email, password);
-  console.log(user);
-
-  return res.redirect("/");
+  try {
+    const user = User.matchPassword(email, password);
+    const token = createTokenForUser(user);
+    return res.cookie("token", token).redirect("/");
+  } catch (error) {
+    return res.render("signin", {
+      error: "incorrect email or password",
+    });
+  }
 });
 
 export default router;
