@@ -1,6 +1,5 @@
-import { Router } from "express";
-import User from "../models/user.js";
-import { createTokenForUser } from "../services/authenticate.js";
+const { Router } = require("express");
+const User = require("../models/user");
 
 const router = Router();
 
@@ -12,31 +11,41 @@ router.get("/signup", (req, res) => {
   return res.render("signup");
 });
 
-router.post("/signup", async (req, res) => {
-  const { fullName, email, password } = req.body;
-  console.log(req.body);
-
-  const user = await User.create({
-    fullName,
-    email,
-    password,
-  });
-  console.log(user);
-
-  return res.redirect("/");
-});
-
-router.post("/signin", (req, res) => {
+router.post("/signin", async (req, res) => {
   const { email, password } = req.body;
   try {
-    const user = User.matchPassword(email, password);
-    const token = createTokenForUser(user);
+    const token = await User.matchPasswordAndGenerateToken(email, password);
+
     return res.cookie("token", token).redirect("/");
   } catch (error) {
     return res.render("signin", {
-      error: "incorrect email or password",
+      error: "Incorrect Email or Password",
     });
   }
 });
 
-export default router;
+router.get("/logout", (req, res) => {
+  res.clearCookie("token").redirect("/");
+});
+
+router.post("/signup", async (req, res) => {
+  const { fullName, email, password } = req.body;
+  try {
+    await User.create({
+      fullName,
+      email,
+      password,
+    });
+    return res.redirect("/");
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.render("signup", {
+        error: "Email already exists",
+      });
+    }
+    // Handle other errors
+    console.log(error);
+  }
+});
+
+module.exports = router;
